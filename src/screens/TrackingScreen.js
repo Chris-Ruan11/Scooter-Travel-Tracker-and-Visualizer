@@ -319,7 +319,7 @@ const TrackingScreen = ({ navigation }) => {
                   <Text style={styles.modalSavingsEmoji}>💰</Text>
                   <Text style={styles.modalSavingsText}>
                     This trip would have cost{' '}
-                    <Text style={styles.modalSavingsHighlight}>{completedTripStats?.birdCost}</Text>
+                    <Text style={styles.modalSavingsHighlight}>{completedTripStats?.birdCost?.toFixed(2)}</Text>
                     {' '}on a Bird
                   </Text>
                 </View>

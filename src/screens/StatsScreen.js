@@ -11,7 +11,8 @@ import {
   formatDistance,
   formatDuration,
   formatCurrency,
-  metersToMiles
+  metersToMiles,
+  calculateTimeSavingsValue
 } from '../utils/calculations';
 
 const StatsScreen = ({ navigation }) => {
@@ -20,7 +21,7 @@ const StatsScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadStats();
-    
+
     const unsubscribe = navigation.addListener('focus', () => {
       loadStats();
     });
@@ -65,6 +66,7 @@ const StatsScreen = ({ navigation }) => {
   const totalDistance = metersToMiles(stats.total_distance || 0);
   const totalDuration = stats.total_duration || 0;
   const avgSpeed = stats.overall_avg_speed || 0;
+  const timeValue = calculateTimeSavingsValue(stats.total_time_saved || 0);
 
   return (
     <ScrollView
@@ -113,19 +115,8 @@ const StatsScreen = ({ navigation }) => {
 
         <View style={styles.savingsCard}>
           <Text style={styles.savingsTitle}>Total Savings</Text>
-          
+
           <View style={styles.savingsRow}>
-            <View style={styles.savingsItem}>
-              <Text style={styles.savingsEmoji}>💰</Text>
-              <Text style={styles.savingsLabel}>Cost Saved</Text>
-              <Text style={styles.savingsValue}>
-                {formatCurrency(stats.total_cost_saved || 0)}
-              </Text>
-              <Text style={styles.savingsSubtext}>vs rideshare</Text>
-            </View>
-
-            <View style={styles.savingsDivider} />
-
             <View style={styles.savingsItem}>
               <Text style={styles.savingsEmoji}>⏱️</Text>
               <Text style={styles.savingsLabel}>Time Saved</Text>
@@ -134,16 +125,27 @@ const StatsScreen = ({ navigation }) => {
               </Text>
               <Text style={styles.savingsSubtext}>vs walking</Text>
             </View>
+
+            <View style={styles.savingsDivider} />
+
+            <View style={styles.savingsItem}>
+              <Text style={styles.savingsEmoji}>💵</Text>
+              <Text style={styles.savingsLabel}>That's worth</Text>
+              <Text style={styles.savingsValue}>
+                {formatCurrency(timeValue)}
+              </Text>
+              <Text style={styles.savingsSubtext}>@ $20/hour</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.funFactsCard}>
           <Text style={styles.funFactsTitle}>Fun Facts</Text>
           <Text style={styles.funFact}>
-            🌍 You could have walked to {(totalDistance / 3).toFixed(1)} miles away
+            🌍 At walking speed, you'd only have walked {(totalDistance / avgSpeed * 3).toFixed(1)} miles
           </Text>
           <Text style={styles.funFact}>
-            🚗 That's {(totalDistance * 0.000621371).toFixed(0)}% of a cross-country trip
+            🚗 You've scooted {(totalDistance / 2800 * 100).toFixed(1)}% of a 2,800 mi cross-country trip
           </Text>
           <Text style={styles.funFact}>
             ⚡ Average trip: {formatDuration(totalDuration / stats.total_trips)}

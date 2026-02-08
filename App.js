@@ -10,6 +10,7 @@ import TrackingScreen from './src/screens/TrackingScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import TripDetailScreen from './src/screens/TripDetailScreen';
 import StatsScreen from './src/screens/StatsScreen';
+import HeatmapScreen from './src/screens/HeatmapScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -19,8 +20,8 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#65A30D',
-        tabBarInactiveTintColor: '#84CC16',
+        tabBarActiveTintColor: '#4A90E2',
+        tabBarInactiveTintColor: '#666',
       }}
     >
       <Tab.Screen
@@ -32,7 +33,15 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="History"  
+        name="Heatmap"
+        component={HeatmapScreen}
+        options={{
+          title: 'Route Heatmap',
+          tabBarLabel: 'Routes',
+        }}
+      />
+      <Tab.Screen
+        name="History"
         component={HistoryScreen}
         options={{
           title: 'Trip History',
