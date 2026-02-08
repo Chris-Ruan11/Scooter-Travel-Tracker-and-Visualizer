@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -18,8 +19,8 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#4A90E2',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: '#65A30D',
+        tabBarInactiveTintColor: '#84CC16',
       }}
     >
       <Tab.Screen
@@ -31,7 +32,7 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="History"
+        name="History"  
         component={HistoryScreen}
         options={{
           title: 'Trip History',
@@ -52,13 +53,30 @@ function MainTabs() {
 
 // Main App
 function App() {
+  const [dbReady, setDbReady] = useState(false);
+
   useEffect(() => {
-    setTimeout(() => {
-      initDB().catch(error => {
+    // Initialize database on app start - WAIT for it to finish
+    initDB()
+      .then(() => {
+        console.log('Database ready!');
+        setDbReady(true);
+      })
+      .catch(error => {
         console.error('Failed to initialize database:', error);
+        // Still set ready to true so app doesn't hang forever
+        setDbReady(true);
       });
-    }, 100);
   }, []);
+
+  // Show loading screen while database initializes
+  if (!dbReady) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
@@ -77,5 +95,14 @@ function App() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});
 
 export default App;
