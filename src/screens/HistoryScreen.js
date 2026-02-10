@@ -1,14 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert
+  Alert,
+  Animated,
+  PanResponder
 } from 'react-native';
 import { getAllTrips, deleteTrip } from '../services/database';
 import { getTripStats } from '../utils/calculations';
+import { metersToMiles } from '../utils/calculations';
+
+const SwipeableRow = ({ children, onDelete, borderColor }) => {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only respond to horizontal swipes
+        return Math.abs(gestureState.dx) > 5;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Only allow swiping left (negative dx)
+        if (gestureState.dx < 0) {
+          translateX.setValue(gestureState.dx);
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx < -80) {
+          // Swiped far enough, show delete button
+          Animated.spring(translateX, {
+            toValue: -80,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          // Snap back
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const resetPosition = () => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleDelete = () => {
+    onDelete();
+    resetPosition();
+  };
+
+  return (
+    <View style={styles.swipeableContainer}>
+      {/* Delete button (hidden behind) */}
+      <View style={[styles.deleteButtonContainer, { backgroundColor: '#F44336' }]}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleDelete}
+        >
+          <Text style={styles.deleteButtonText}>🗑️</Text>
+          <Text style={styles.deleteButtonLabel}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Swipeable content */}
+      <Animated.View
+        style={[
+          styles.swipeableContent,
+          { transform: [{ translateX }] }
+        ]}
+        {...panResponder.panHandlers}
+      >
+        {children}
+      </Animated.View>
+    </View>
+  );
+};
 
 const HistoryScreen = ({ navigation }) => {
   const [trips, setTrips] = useState([]);
@@ -17,7 +91,6 @@ const HistoryScreen = ({ navigation }) => {
   useEffect(() => {
     loadTrips();
     
-    // Refresh when screen comes into focus
     const unsubscribe = navigation.addListener('focus', () => {
       loadTrips();
     });
@@ -28,7 +101,6 @@ const HistoryScreen = ({ navigation }) => {
   const loadTrips = async () => {
     try {
       const allTrips = await getAllTrips();
-      // Filter out trips that haven't ended yet
       const completedTrips = allTrips.filter(trip => trip.end_time);
       setTrips(completedTrips);
     } catch (error) {
@@ -64,6 +136,20 @@ const HistoryScreen = ({ navigation }) => {
     );
   };
 
+  const getTripColor = (distanceMeters) => {
+    const miles = metersToMiles(distanceMeters);
+    
+    if (miles < 0.5) {
+      return '#4CAF50'; // Green - short
+    } else if (miles < 1) {
+      return '#2196F3'; // Blue - medium
+    } else if (miles < 2.5) {
+      return '#9C27B0'; // Purple - long
+    } else {
+      return '#FF5722'; // Red - very long
+    }
+  };
+
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
@@ -83,45 +169,60 @@ const HistoryScreen = ({ navigation }) => {
 
   const renderTrip = ({ item }) => {
     const stats = getTripStats(item, null);
+    const borderColor = getTripColor(item.distance);
 
     return (
-      <TouchableOpacity
-        style={styles.tripCard}
-        onPress={() => navigation.navigate('TripDetail', { tripId: item.id })}
-        onLongPress={() => handleDeleteTrip(item.id)}
+      <SwipeableRow 
+        onDelete={() => handleDeleteTrip(item.id)}
+        borderColor={borderColor}
       >
-        <View style={styles.tripHeader}>
-          <Text style={styles.tripDate}>{formatDate(item.start_time)}</Text>
-          <Text style={styles.tripTime}>{formatTime(item.start_time)}</Text>
-        </View>
+        <TouchableOpacity
+          style={[styles.tripCard, { borderLeftColor: borderColor }]}
+          onPress={() => navigation.navigate('TripDetail', { tripId: item.id })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.tripHeader}>
+            <View>
+              <Text style={styles.tripDate}>{formatDate(item.start_time)}</Text>
+              <Text style={styles.tripTime}>{formatTime(item.start_time)}</Text>
+            </View>
+            <View style={[styles.colorBadge, { backgroundColor: borderColor }]}>
+              <Text style={styles.colorBadgeText}>{stats.distance}</Text>
+            </View>
+          </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Distance</Text>
-            <Text style={styles.statValue}>{stats.distance}</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>⏱️</Text>
+              <Text style={styles.statLabel}>Duration</Text>
+              <Text style={styles.statValue}>{stats.duration}</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>⚡</Text>
+              <Text style={styles.statLabel}>Avg Speed</Text>
+              <Text style={styles.statValue}>{stats.avgSpeed}</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>🔥</Text>
+              <Text style={styles.statLabel}>Max Speed</Text>
+              <Text style={styles.statValue}>{stats.maxSpeed}</Text>
+            </View>
           </View>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Duration</Text>
-            <Text style={styles.statValue}>{stats.duration}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Avg Speed</Text>
-            <Text style={styles.statValue}>{stats.avgSpeed}</Text>
-          </View>
-        </View>
 
-        <View style={styles.savingsRow}>
-          <Text style={styles.savingsText}>
-            💰 Saved {stats.costSaved} • ⏱️ {stats.timeSaved} faster
-          </Text>
-        </View>
-      </TouchableOpacity>
+          <View style={styles.savingsRow}>
+            <Text style={styles.savingsText}>
+              💰 {stats.birdCost} • ⏱️ {stats.timeSaved} saved
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </SwipeableRow>
     );
   };
 
   if (trips.length === 0) {
     return (
       <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🛴</Text>
         <Text style={styles.emptyText}>No trips yet!</Text>
         <Text style={styles.emptySubtext}>
           Start tracking your scooter rides to see them here
@@ -152,11 +253,45 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
+  swipeableContainer: {
+    marginBottom: 12,
+    position: 'relative',
+    height: 'auto',
+  },
+  deleteButtonContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  deleteButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+    height: '100%',
+  },
+  deleteButtonText: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  deleteButtonLabel: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  swipeableContent: {
+    backgroundColor: 'transparent',
+  },
   tripCard: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    borderLeftWidth: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -166,16 +301,28 @@ const styles = StyleSheet.create({
   tripHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
   tripDate: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
     color: '#333',
   },
   tripTime: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 2,
+  },
+  colorBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  colorBadgeText: {
+    color: 'white',
     fontSize: 14,
-    color: '#666',
+    fontWeight: 'bold',
   },
   statsRow: {
     flexDirection: 'row',
@@ -184,32 +331,42 @@ const styles = StyleSheet.create({
   },
   stat: {
     flex: 1,
+    alignItems: 'center',
+  },
+  statIcon: {
+    fontSize: 18,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    fontSize: 10,
+    color: '#999',
+    marginBottom: 2,
   },
   statValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#333',
   },
   savingsRow: {
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#f0f0f0',
   },
   savingsText: {
     fontSize: 13,
     color: '#4CAF50',
     fontWeight: '500',
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 20,

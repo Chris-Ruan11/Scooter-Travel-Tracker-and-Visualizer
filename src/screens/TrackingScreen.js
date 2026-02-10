@@ -23,6 +23,7 @@ import {
   mpsToMph,
   formatCurrency
 } from '../utils/calculations';
+import Confetti from '../components/Confetti';
 
 const TrackingScreen = ({ navigation }) => {
   const [isTracking, setIsTracking] = useState(false);
@@ -36,6 +37,7 @@ const TrackingScreen = ({ navigation }) => {
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [completedTripStats, setCompletedTripStats] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const mapRef = useRef(null);
   const startTime = useRef(null);
@@ -142,7 +144,7 @@ const TrackingScreen = ({ navigation }) => {
       const distanceMiles = metersToMiles(stats.totalDistance);
       const distanceFeet = distanceMiles * 5280;
 
-      // Check if trip is too short (less than 100 feet)
+      // Check if trip is less than 100 feet
       if (distanceFeet < 100) {
         // Delete the trip
         await deleteTrip(currentTripId);
@@ -172,14 +174,14 @@ const TrackingScreen = ({ navigation }) => {
         duration: duration,
         avg_speed: avgSpeed,
         max_speed: mpsToMph(stats.maxSpeed),
-        cost_saved: birdCost, // Using Bird cost as the "cost saved"
+        cost_saved: birdCost, 
         time_saved: timeSaved
       });
 
       setIsTracking(false);
       setCurrentTripId(null);
       
-      // Show the stats modal instead of Alert
+      // Show the stats modal with confetti!
       setCompletedTripStats({
         distance: formatDistance(distanceMiles),
         duration: formatDuration(duration),
@@ -188,6 +190,12 @@ const TrackingScreen = ({ navigation }) => {
         timeValue: formatCurrency(timeValue)
       });
       setShowStatsModal(true);
+      setShowConfetti(true);
+
+      // Stop confetti after 3 seconds
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 3000);
 
     } catch (error) {
       console.error('Error stopping trip:', error);
@@ -197,6 +205,7 @@ const TrackingScreen = ({ navigation }) => {
 
   const closeStatsModal = () => {
     setShowStatsModal(false);
+    setShowConfetti(false);
     setRouteCoordinates([]); // Clear the route from map
     navigation.navigate('History');
   };
@@ -243,18 +252,21 @@ const TrackingScreen = ({ navigation }) => {
         {isTracking && (
           <>
             <View style={styles.statBox}>
+              <Text style={styles.statIcon}>📍</Text>
               <Text style={styles.statLabel}>Distance</Text>
               <Text style={styles.statValue}>
                 {formatDistance(metersToMiles(tripStats.distance))}
               </Text>
             </View>
             <View style={styles.statBox}>
+              <Text style={styles.statIcon}>⏱️</Text>
               <Text style={styles.statLabel}>Duration</Text>
               <Text style={styles.statValue}>
                 {formatDuration(tripStats.duration)}
               </Text>
             </View>
             <View style={styles.statBox}>
+              <Text style={styles.statIcon}>⚡</Text>
               <Text style={styles.statLabel}>Max Speed</Text>
               <Text style={styles.statValue}>
                 {tripStats.maxSpeed.toFixed(1)} mph
@@ -290,7 +302,7 @@ const TrackingScreen = ({ navigation }) => {
         )}
       </View>
 
-      {/* Trip Completed Stats Modal */}
+      {/* Trip Completed Stats Modal with Confetti */}
       <Modal
         visible={showStatsModal}
         transparent={true}
@@ -298,8 +310,10 @@ const TrackingScreen = ({ navigation }) => {
         onRequestClose={closeStatsModal}
       >
         <View style={styles.modalOverlay}>
+          {showConfetti && <Confetti count={60} />}
+          
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Trip Completed! 🛴</Text>
+            <Text style={styles.modalTitle}>🎉 Trip Completed! 🛴</Text>
             
             <View style={styles.modalStatsContainer}>
               <View style={styles.modalStatRow}>
@@ -319,7 +333,7 @@ const TrackingScreen = ({ navigation }) => {
                   <Text style={styles.modalSavingsEmoji}>💰</Text>
                   <Text style={styles.modalSavingsText}>
                     This trip would have cost{' '}
-                    <Text style={styles.modalSavingsHighlight}>{completedTripStats?.birdCost?.toFixed(2)}</Text>
+                    <Text style={styles.modalSavingsHighlight}>{completedTripStats?.birdCost}</Text>
                     {' '}on a Bird
                   </Text>
                 </View>
@@ -336,8 +350,9 @@ const TrackingScreen = ({ navigation }) => {
                 <View style={styles.modalSavingsItem}>
                   <Text style={styles.modalSavingsEmoji}>💵</Text>
                   <Text style={styles.modalSavingsText}>
-                    Which equates to{' '} worth of time
+                    Which equates to{' '}
                     <Text style={styles.modalSavingsHighlight}>{completedTripStats?.timeValue}</Text>
+                    {' '}worth of time
                   </Text>
                 </View>
               </View>
@@ -373,24 +388,29 @@ const styles = StyleSheet.create({
   },
   statBox: {
     backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
     minWidth: 100,
+    alignItems: 'center',
+  },
+  statIcon: {
+    fontSize: 20,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 4,
+    marginTop: 2,
   },
   backgroundNotice: {
     position: 'absolute',
@@ -437,37 +457,37 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 24,
+    padding: 28,
     width: '100%',
     maxWidth: 400,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 15,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalStatsContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalStatRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -483,57 +503,44 @@ const styles = StyleSheet.create({
   modalDivider: {
     height: 1,
     backgroundColor: '#ddd',
-    marginVertical: 16,
+    marginVertical: 18,
   },
   modalSavingsSection: {
     marginTop: 8,
   },
-  modalSavingsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 8,
-  },
   modalSavingsItem: {
-    marginBottom: 16,
+    marginBottom: 18,
+    alignItems: 'center',
   },
   modalSavingsEmoji: {
-    fontSize: 28,
-    marginBottom: 8,
+    fontSize: 32,
+    marginBottom: 10,
   },
   modalSavingsText: {
     fontSize: 15,
     color: '#666',
     lineHeight: 22,
+    textAlign: 'center',
   },
   modalSavingsHighlight: {
     fontWeight: 'bold',
     color: '#4CAF50',
-    fontSize: 16,
-  },
-  modalSavingsLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  modalSavingsValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  modalSavingsSubtext: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 2,
+    fontSize: 17,
   },
   modalButton: {
     backgroundColor: '#4A90E2',
-    padding: 16,
+    padding: 18,
     borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#4A90E2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   modalButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
   },
 });

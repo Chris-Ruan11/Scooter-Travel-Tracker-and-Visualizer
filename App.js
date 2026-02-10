@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -20,8 +19,24 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
+        tabBarIconStyle: {
+          marginBottom: 4,  // pushes icon upward
+        },
         tabBarActiveTintColor: '#4A90E2',
-        tabBarInactiveTintColor: '#666',
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          backgroundColor: 'white',
+          borderTopWidth: 1,
+          borderTopColor: '#f0f0f0',
+          paddingBottom: 8,
+          paddingTop: 5,
+          height: 70,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 1
+        },
       }}
     >
       <Tab.Screen
@@ -30,14 +45,9 @@ function MainTabs() {
         options={{
           headerShown: false,
           tabBarLabel: 'Track',
-        }}
-      />
-      <Tab.Screen
-        name="Heatmap"
-        component={HeatmapScreen}
-        options={{
-          title: 'Route Heatmap',
-          tabBarLabel: 'Routes',
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon icon="🛴" focused={focused} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -46,6 +56,20 @@ function MainTabs() {
         options={{
           title: 'Trip History',
           tabBarLabel: 'History',
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon icon="📖" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Routes"
+        component={HeatmapScreen}
+        options={{
+          title: 'Route Map',
+          tabBarLabel: 'Routes',
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon icon="🗺️" focused={focused} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -54,38 +78,40 @@ function MainTabs() {
         options={{
           title: 'Statistics',
           tabBarLabel: 'Stats',
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon icon="📊" focused={focused} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
   );
 }
 
+const TabIcon = ({ icon, focused, color }) => {
+  return (
+    <Text
+      style={{
+        fontSize: focused ? 28 : 24,
+        opacity: focused ? 1 : 0.6,
+        transform: [{ scale: focused ? 1.1 : 1 }],
+      }}
+    >
+      {icon}
+    </Text>
+  );
+};
+
+// Import Text for TabIcon
+import { Text } from 'react-native';
+
 // Main App
 function App() {
-  const [dbReady, setDbReady] = useState(false);
-
   useEffect(() => {
-    // Initialize database on app start - WAIT for it to finish
-    initDB()
-      .then(() => {
-        console.log('Database ready!');
-        setDbReady(true);
-      })
-      .catch(error => {
-        console.error('Failed to initialize database:', error);
-        // Still set ready to true so app doesn't hang forever
-        setDbReady(true);
-      });
+    // Initialize database on app start
+    initDB().catch(error => {
+      console.error('Failed to initialize database:', error);
+    });
   }, []);
-
-  // Show loading screen while database initializes
-  if (!dbReady) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4A90E2" />
-      </View>
-    );
-  }
 
   return (
     <NavigationContainer>
@@ -104,14 +130,5 @@ function App() {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-});
 
 export default App;
