@@ -30,6 +30,15 @@ class GPSTracker {
     this.watchId = null;
     this.backgroundTimer = null;
     
+    this.tripStarted = false; // Has trip actually started (reached speed threshold)?
+    this.speedBuffer = []; // Buffer to check sustained speed
+    this.pointsBeforeStart = []; // Points collected before trip "starts"
+    this.actualStartTime = null; // When trip actually started
+    
+    this.START_SPEED_THRESHOLD = 2.5; // m/s (~5.6 mph) - need to reach this to "start"
+    this.END_SPEED_THRESHOLD = 2.0; // m/s (~4.5 mph) - below this at end gets trimmed
+    this.SPEED_BUFFER_SIZE = 3; // Need 3 consecutive readings (~15 sec total)
+    
     this.appState = AppState.currentState;
     this.appStateListener = AppState.addEventListener('change', (nextAppState) => {
       this.appState = nextAppState;
@@ -40,7 +49,6 @@ class GPSTracker {
   // Request location permissions
   async requestPermissions() {
     if (Platform.OS === 'ios') {
-      // For iOS, just try to get position - it will auto-request permission
       try {
         await this.getCurrentPosition();
         return true;
@@ -55,6 +63,7 @@ class GPSTracker {
       return granted === PermissionsAndroid.RESULTS.GRANTED;
     }
   }
+
   async startTracking(tripId, onLocationUpdate) {
     if (this.isTracking) {
       console.warn('Already tracking');
@@ -73,6 +82,11 @@ class GPSTracker {
     this.points = [];
     this.maxSpeed = 0;
     this.onLocationUpdate = onLocationUpdate;
+    
+    this.tripStarted = false;
+    this.speedBuffer = [];
+    this.pointsBeforeStart = [];
+    this.actualStartTime = null;
 
     // Start watching position
     this.watchId = Geolocation.watchPosition(
@@ -87,14 +101,14 @@ class GPSTracker {
         distanceFilter: 5, // Update every 5 meters
         interval: 5000, // 5 seconds
         fastestInterval: 3000, // Fastest 3 seconds
-        showsBackgroundLocationIndicator: true, // iOS blue bar
+        showsBackgroundLocationIndicator: true,
         forceRequestLocation: true,
       }
     );
 
-    console.log('GPS tracking started for trip', tripId);
+    console.log('🛴 GPS tracking started for trip', tripId);
+    console.log('⏳ Waiting for speed to reach ~5.6 mph to start recording...');
 
-    // For iOS background: Keep the app alive with periodic updates
     if (Platform.OS === 'ios') {
       this.startBackgroundPing();
     }
@@ -118,6 +132,59 @@ class GPSTracker {
       return;
     }
 
+    const speedMps = point.speed;
+
+    if (!this.tripStarted) {
+      this.speedBuffer.push(speedMps);
+      this.pointsBeforeStart.push(point);
+
+      // Keep buffer at max size
+      if (this.speedBuffer.length > this.SPEED_BUFFER_SIZE) {
+        this.speedBuffer.shift();
+        // Only keep last 10 points before start for smooth route
+        if (this.pointsBeforeStart.length > 10) {
+          this.pointsBeforeStart.shift();
+        }
+      }
+
+      // Check if we've reached start speed threshold consistently
+      const avgSpeed = this.speedBuffer.reduce((a, b) => a + b, 0) / this.speedBuffer.length;
+
+      if (this.speedBuffer.length >= this.SPEED_BUFFER_SIZE && avgSpeed >= this.START_SPEED_THRESHOLD) {
+        // TRIP STARTS
+        this.tripStarted = true;
+        this.actualStartTime = Date.now();
+        console.log('✅ Trip started! Average speed:', (avgSpeed * 2.237).toFixed(1), 'mph');
+
+        // Save the buffered points (last few points before we started)
+        for (const bufferedPoint of this.pointsBeforeStart) {
+          await this.savePoint(bufferedPoint);
+        }
+        this.pointsBeforeStart = [];
+      } else {
+        // Still waiting, update UI with "waiting" state
+        if (this.onLocationUpdate) {
+          this.onLocationUpdate({
+            point,
+            totalDistance: 0,
+            maxSpeed: 0,
+            pointCount: 0,
+            waiting: true, 
+            currentSpeed: speedMps * 2.237
+          });
+        }
+      }
+      return;
+    }
+
+    if (this.tripStarted) {
+      await this.savePoint(point);
+    }
+  }
+
+  async savePoint(point) {
+    const speedMps = point.speed;
+
     // Calculate distance from last point
     if (this.lastPoint) {
       const distance = calculateDistance(
@@ -126,14 +193,13 @@ class GPSTracker {
         point.latitude,
         point.longitude
       );
-      
-      if (distance > 2) { // Ignore tiny movements
+
+      if (distance > 2) { // Ignore tiny movements (GPS drift)
         this.totalDistance += distance;
       }
     }
 
     // Track max speed
-    const speedMps = point.speed;
     if (speedMps > this.maxSpeed) {
       this.maxSpeed = speedMps;
     }
@@ -151,6 +217,8 @@ class GPSTracker {
           totalDistance: this.totalDistance,
           maxSpeed: this.maxSpeed,
           pointCount: this.points.length,
+          waiting: false,
+          currentSpeed: speedMps * 2.237
         });
       }
     } catch (error) {
@@ -158,11 +226,9 @@ class GPSTracker {
     }
   }
 
-  // iOS background workaround
   startBackgroundPing() {
     this.backgroundTimer = setInterval(() => {
       if (this.isTracking) {
-        // Get a single location update to keep tracking alive
         Geolocation.getCurrentPosition(
           (position) => {
             if (this.isTracking) {
@@ -173,7 +239,7 @@ class GPSTracker {
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       }
-    }, 30000); // Ping every 30 seconds to keep tracking alive
+    }, 30000);
   }
 
   async stopTracking() {
@@ -193,18 +259,57 @@ class GPSTracker {
 
     this.isTracking = false;
 
+    // End trimming
+    let trimmedPoints = [...this.points];
+    let trimmedDistance = this.totalDistance;
+
+    while (trimmedPoints.length > 0) {
+      const lastPoint = trimmedPoints[trimmedPoints.length - 1];
+      const lastSpeed = lastPoint.speed || 0;
+
+      // If last point is fast enough, we're done trimming
+      if (lastSpeed >= this.END_SPEED_THRESHOLD) {
+        break;
+      }
+
+      const removedPoint = trimmedPoints.pop();
+
+      // Recalculate distance without this point
+      if (trimmedPoints.length > 0) {
+        const prevPoint = trimmedPoints[trimmedPoints.length - 1];
+        const removedDistance = calculateDistance(
+          prevPoint.latitude,
+          prevPoint.longitude,
+          removedPoint.latitude,
+          removedPoint.longitude
+        );
+        trimmedDistance -= removedDistance;
+      }
+    }
+
+    const pointsRemoved = this.points.length - trimmedPoints.length;
+
+    if (pointsRemoved > 0) {
+      console.log(`🎯 Trimmed ${pointsRemoved} slow points from end of trip`);
+      console.log(`Distance before: ${this.totalDistance.toFixed(0)}m, after: ${trimmedDistance.toFixed(0)}m`);
+    }
+
     const stats = {
-      totalDistance: this.totalDistance,
+      totalDistance: trimmedDistance,
       maxSpeed: this.maxSpeed,
-      pointCount: this.points.length,
+      pointCount: trimmedPoints.length,
+      actualStartTime: this.actualStartTime, // When trip actually started (reached speed threshold)
+      actualEndTime: trimmedPoints.length > 0 ? trimmedPoints[trimmedPoints.length - 1].timestamp : Date.now(), 
     };
 
-    // Reset
     this.currentTripId = null;
     this.lastPoint = null;
     this.totalDistance = 0;
     this.points = [];
     this.maxSpeed = 0;
+    this.tripStarted = false;
+    this.speedBuffer = [];
+    this.pointsBeforeStart = [];
 
     console.log('GPS tracking stopped', stats);
     return stats;
@@ -234,9 +339,8 @@ class GPSTracker {
   async checkPermissionStatus() {
     if (Platform.OS === 'ios') {
       const status = await Geolocation.getAuthorizationStatus();
-      // Convert to similar format as before
       switch (status) {
-        case 'granted': return 4; // Always (or WhenInUse)
+        case 'granted': return 4;
         case 'restricted': return 1;
         case 'denied': return 2;
         case 'whenInUse': return 3;

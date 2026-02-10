@@ -140,11 +140,11 @@ const TripDetailScreen = ({ route }) => {
         </View>
 
         <View style={styles.savingsContainer}>
-          <Text style={styles.savingsTitle}>Savings vs Rideshare</Text>
+          <Text style={styles.savingsTitle}>Savings:</Text>
           <View style={styles.savingsRow}>
             <View style={styles.savingsItem}>
               <Text style={styles.savingsLabel}>💰 Cost Saved</Text>
-              <Text style={styles.savingsValue}>{stats.costSaved}</Text>
+              <Text style={styles.savingsValue}>{stats.birdCost}</Text>
             </View>
             <View style={styles.savingsItem}>
               <Text style={styles.savingsLabel}>⏱️ Time Saved</Text>

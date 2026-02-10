@@ -33,7 +33,8 @@ const TrackingScreen = ({ navigation }) => {
   const [tripStats, setTripStats] = useState({
     distance: 0,
     duration: 0,
-    maxSpeed: 0
+    maxSpeed: 0,
+    waiting: false
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [completedTripStats, setCompletedTripStats] = useState(null);
@@ -85,7 +86,7 @@ const TrackingScreen = ({ navigation }) => {
       setIsTracking(true);
       startTime.current = now;
       setRouteCoordinates([]);
-      setTripStats({ distance: 0, duration: 0, maxSpeed: 0 });
+      setTripStats({ distance: 0, duration: 0, maxSpeed: 0, waiting: true });
 
       // Start GPS tracking
       await gpsTracker.startTracking(tripId, handleLocationUpdate);
@@ -102,18 +103,23 @@ const TrackingScreen = ({ navigation }) => {
     }
   };
 
-  const handleLocationUpdate = ({ point, totalDistance, maxSpeed }) => {
+  const handleLocationUpdate = ({ point, totalDistance, maxSpeed, waiting }) => {
     const newCoord = {
       latitude: point.latitude,
       longitude: point.longitude
     };
 
     setCurrentLocation(newCoord);
-    setRouteCoordinates(prev => [...prev, newCoord]);
+
+    if (!waiting) {
+      setRouteCoordinates(prev => [...prev, newCoord]);
+    }
+    
     setTripStats(prev => ({
       ...prev,
       distance: totalDistance,
-      maxSpeed: mpsToMph(maxSpeed)
+      maxSpeed: mpsToMph(maxSpeed), 
+      waiting: waiting || false
     }));
 
     // Center map on current location
@@ -138,9 +144,8 @@ const TrackingScreen = ({ navigation }) => {
         Alert.alert('Error', 'Failed to stop tracking');
         return;
       }
-
-      const endTime = Date.now();
-      const duration = Math.floor((endTime - startTime.current) / 1000);
+      
+      const duration = Math.floor((stats.actualEndTime - stats.actualStartTime) / 1000);
       const distanceMiles = metersToMiles(stats.totalDistance);
       const distanceFeet = distanceMiles * 5280;
 
@@ -169,7 +174,7 @@ const TrackingScreen = ({ navigation }) => {
 
       // Save the trip
       await updateTrip(currentTripId, {
-        end_time: endTime,
+        end_time: stats.actualEndTime,
         distance: stats.totalDistance,
         duration: duration,
         avg_speed: avgSpeed,
@@ -276,10 +281,21 @@ const TrackingScreen = ({ navigation }) => {
         )}
       </View>
 
-      {isTracking && (
+      {isTracking && tripStats.waiting && (
+        <View style={styles.waitingNotice}>
+          <Text style={styles.waitingText}>
+            ⏳ Waiting for movement...
+          </Text>
+          <Text style={styles.waitingSubtext}>
+            Start scooting to begin recording
+          </Text>
+        </View>
+      )}
+
+      {isTracking && !tripStats.waiting && (
         <View style={styles.backgroundNotice}>
           <Text style={styles.backgroundNoticeText}>
-            📍 Background tracking active
+            Recording trip
           </Text>
         </View>
       )}
