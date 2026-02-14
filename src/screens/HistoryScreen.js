@@ -141,7 +141,7 @@ const HistoryScreen = ({ navigation }) => {
     
     if (miles < 0.5) {
       return '#4CAF50'; // Green - short
-    } else if (miles < 1) {
+    } else if (miles < 1.5) {
       return '#2196F3'; // Blue - medium
     } else if (miles < 2.5) {
       return '#9C27B0'; // Purple - long

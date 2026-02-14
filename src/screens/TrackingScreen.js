@@ -45,6 +45,10 @@ const TrackingScreen = ({ navigation }) => {
   const timerInterval = useRef(null);
 
   useEffect(() => {
+    if (gpsTracker.isTracking) {
+      gpsTracker.stopTracking();
+    }
+    
     getCurrentLocation();
 
     return () => {
@@ -81,7 +85,7 @@ const TrackingScreen = ({ navigation }) => {
 
       const now = Date.now();
       const tripId = await createTrip(now);
-      
+
       setCurrentTripId(tripId);
       setIsTracking(true);
       startTime.current = now;
@@ -114,11 +118,11 @@ const TrackingScreen = ({ navigation }) => {
     if (!waiting) {
       setRouteCoordinates(prev => [...prev, newCoord]);
     }
-    
+
     setTripStats(prev => ({
       ...prev,
       distance: totalDistance,
-      maxSpeed: mpsToMph(maxSpeed), 
+      maxSpeed: mpsToMph(maxSpeed),
       waiting: waiting || false
     }));
 
@@ -139,12 +143,12 @@ const TrackingScreen = ({ navigation }) => {
       }
 
       const stats = await gpsTracker.stopTracking();
-      
+
       if (!stats) {
         Alert.alert('Error', 'Failed to stop tracking');
         return;
       }
-      
+
       const duration = Math.floor((stats.actualEndTime - stats.actualStartTime) / 1000);
       const distanceMiles = metersToMiles(stats.totalDistance);
       const distanceFeet = distanceMiles * 5280;
@@ -153,11 +157,11 @@ const TrackingScreen = ({ navigation }) => {
       if (distanceFeet < 100) {
         // Delete the trip
         await deleteTrip(currentTripId);
-        
+
         setIsTracking(false);
         setCurrentTripId(null);
         setRouteCoordinates([]);
-        
+
         Alert.alert(
           'Trip Too Short',
           `Your trip was only ${distanceFeet.toFixed(0)} feet. Trips under 100 feet are not saved.`,
@@ -179,13 +183,13 @@ const TrackingScreen = ({ navigation }) => {
         duration: duration,
         avg_speed: avgSpeed,
         max_speed: mpsToMph(stats.maxSpeed),
-        cost_saved: birdCost, 
+        cost_saved: birdCost,
         time_saved: timeSaved
       });
 
       setIsTracking(false);
       setCurrentTripId(null);
-      
+
       // Show the stats modal with confetti!
       setCompletedTripStats({
         distance: formatDistance(distanceMiles),
@@ -236,7 +240,7 @@ const TrackingScreen = ({ navigation }) => {
             strokeWidth={4}
           />
         )}
-        
+
         {routeCoordinates.length > 0 && (
           <>
             <Marker
@@ -327,23 +331,23 @@ const TrackingScreen = ({ navigation }) => {
       >
         <View style={styles.modalOverlay}>
           {showConfetti && <Confetti count={60} />}
-          
+
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>🎉 Trip Completed! 🛴</Text>
-            
+
             <View style={styles.modalStatsContainer}>
               <View style={styles.modalStatRow}>
                 <Text style={styles.modalStatLabel}>Distance</Text>
                 <Text style={styles.modalStatValue}>{completedTripStats?.distance}</Text>
               </View>
-              
+
               <View style={styles.modalStatRow}>
                 <Text style={styles.modalStatLabel}>Duration</Text>
                 <Text style={styles.modalStatValue}>{completedTripStats?.duration}</Text>
               </View>
-              
+
               <View style={styles.modalDivider} />
-              
+
               <View style={styles.modalSavingsSection}>
                 <View style={styles.modalSavingsItem}>
                   <Text style={styles.modalSavingsEmoji}>💰</Text>
@@ -353,7 +357,7 @@ const TrackingScreen = ({ navigation }) => {
                     {' '}on a Bird
                   </Text>
                 </View>
-                
+
                 <View style={styles.modalSavingsItem}>
                   <Text style={styles.modalSavingsEmoji}>⏱️</Text>
                   <Text style={styles.modalSavingsText}>
@@ -362,7 +366,7 @@ const TrackingScreen = ({ navigation }) => {
                     {' '}compared to walking
                   </Text>
                 </View>
-                
+
                 <View style={styles.modalSavingsItem}>
                   <Text style={styles.modalSavingsEmoji}>💵</Text>
                   <Text style={styles.modalSavingsText}>
@@ -373,7 +377,7 @@ const TrackingScreen = ({ navigation }) => {
                 </View>
               </View>
             </View>
-            
+
             <TouchableOpacity
               style={styles.modalButton}
               onPress={closeStatsModal}

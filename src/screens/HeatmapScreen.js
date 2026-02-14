@@ -17,8 +17,8 @@ const HeatmapScreen = () => {
   const [totalDistance, setTotalDistance] = useState(0);
   const mapRef = useRef(null);
 
-  // Segment size in degrees (about 50 meters)
-  const SEGMENT_SIZE = 0.0005;
+  // Segment size in degrees 
+  const SEGMENT_SIZE = 0.00055;
 
   useEffect(() => {
     loadRouteData();
@@ -121,15 +121,15 @@ const HeatmapScreen = () => {
     
     if (frequency < 0.2) {
       // Rare: Light blue
-      color = 'rgba(100, 181, 246, 0.6)';
+      color = 'rgba(187, 222, 251, 0.9)';
       strokeWidth = 3;
     } else if (frequency < 0.4) {
       // Occasional: Blue
-      color = 'rgba(66, 165, 245, 0.7)';
+      color = 'rgba(66, 165, 245, 0.9)';
       strokeWidth = 4;
     } else if (frequency < 0.6) {
       // Regular: Cyan/Yellow
-      color = 'rgba(41, 182, 246, 0.8)';
+      color = 'rgba(26, 121, 206, 0.91)';
       strokeWidth = 5;
     } else if (frequency < 0.8) {
       // Frequent: Orange
@@ -217,15 +217,15 @@ const HeatmapScreen = () => {
         <Text style={styles.legendTitle}>Frequency</Text>
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendLine, { backgroundColor: 'rgba(100, 181, 246, 0.8)' }]} />
+            <View style={[styles.legendLine, { backgroundColor: 'rgba(187, 222, 251, 0.9)' }]} />
             <Text style={styles.legendText}>Rare</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendLine, { backgroundColor: 'rgba(66, 165, 245, 0.8)' }]} />
+            <View style={[styles.legendLine, { backgroundColor: 'rgba(66, 165, 245, 0.9)' }]} />
             <Text style={styles.legendText}>Some</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendLine, { backgroundColor: 'rgba(41, 182, 246, 0.8)' }]} />
+            <View style={[styles.legendLine, { backgroundColor: 'rgba(26, 121, 206, 0.91)' }]} />
             <Text style={styles.legendText}>Regular</Text>
           </View>
           <View style={styles.legendItem}>
@@ -240,7 +240,7 @@ const HeatmapScreen = () => {
       </View>
 
       <TouchableOpacity style={styles.fitButton} onPress={fitToRoutes}>
-        <Text style={styles.fitButtonText}>🎯 Fit to Map</Text>
+        <Text style={styles.fitButtonText}>🎯 Center</Text>
       </TouchableOpacity>
     </View>
   );
@@ -288,12 +288,12 @@ const styles = StyleSheet.create({
   },
   statsCard: {
     position: 'absolute',
-    top: 60,
+    top: 25,
     left: 16,
     right: 16,
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 16,
+    padding: 13,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   },
   legendCard: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 30,
     left: 16,
     right: 16,
     backgroundColor: 'white',
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   fitButton: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 105,
     alignSelf: 'center',
     backgroundColor: '#4A90E2',
     paddingHorizontal: 20,

@@ -117,6 +117,18 @@ const StatsScreen = ({ navigation }) => {
           <Text style={styles.savingsTitle}>Total Savings</Text>
 
           <View style={styles.savingsRow}>
+
+            <View style={styles.savingsItem}>
+              <Text style={styles.savingsEmoji}>💰</Text>
+              <Text style={styles.savingsLabel}>Cost saved</Text>
+              <Text style={styles.savingsValue}>
+                {formatDuration(stats.total_cost_saved || 0)}
+              </Text>
+              <Text style={styles.savingsSubtext}>from Birds</Text>
+            </View>
+
+            <View style={styles.savingsDivider} />
+
             <View style={styles.savingsItem}>
               <Text style={styles.savingsEmoji}>⏱️</Text>
               <Text style={styles.savingsLabel}>Time Saved</Text>
