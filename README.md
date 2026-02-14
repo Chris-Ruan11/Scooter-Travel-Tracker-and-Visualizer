@@ -4,7 +4,7 @@ It tracks scooter trips - even when the phone is locked - to show the time saved
 # Rundown:
 Press "Start Scoot" on the **Tracking tab**, then the route will be shown like the screenshot below. 
 <p align="center">
-  <img src="src/assets/images/LiveTracking.PNG" width="320">
+  <img src="./src/assets/images/LiveTracking.PNG" width="320">
 </p>
 **Smart detection**: for tracking, the app will automatically sense when the trip actually begins and ends, so that you can take time to settle down before pressing the stop trip button, and take some time to get ready after pressing start scoot. 
 
