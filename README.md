@@ -8,7 +8,7 @@ Press "Start Scoot" on the **Tracking tab**, then the route will be shown like t
 </p>
 
 ### **Smart detection**: 
-for tracking, the app will automatically sense when the trip actually begins and ends, so that you can take time to settle down before pressing the stop trip button, and take some time to get ready after pressing start scoot. 
+For tracking, the app will automatically sense when the trip actually begins and ends, so that you can take time to settle down before pressing the stop trip button, and take some time to get ready after pressing start scoot. 
 
 Pressing "Stop Scoot" will bring up a celebratory page with trip statistics:
 <p align="center">
